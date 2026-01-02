@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"path"
+	stdPath "path"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,7 +17,7 @@ const (
 
 func filesystemCache(opts generateMapConfig) (io.ReadCloser, error) {
 	cacheKey := opts.getCacheKey()
-	cacheFileName := path.Join(cfg.CacheDir, cacheKey[0:2], cacheKey+".png")
+	cacheFileName := stdPath.Join(cfg.CacheDir, cacheKey[0:2], cacheKey+".png")
 
 	if info, err := os.Stat(cacheFileName); err == nil && info.ModTime().Add(cfg.ForceCache).After(time.Now()) {
 		f, err := os.Open(cacheFileName) //#nosec:G304 // Intended to open a variable file
@@ -35,7 +35,7 @@ func filesystemCache(opts generateMapConfig) (io.ReadCloser, error) {
 		return nil, errors.Wrap(err, "writing file")
 	}
 
-	if err = os.MkdirAll(path.Dir(cacheFileName), cacheDirMode); err != nil {
+	if err = os.MkdirAll(stdPath.Dir(cacheFileName), cacheDirMode); err != nil {
 		return nil, errors.Wrap(err, "creating cache dir")
 	}
 

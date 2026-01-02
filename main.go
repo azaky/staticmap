@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	staticMap "github.com/Luzifer/go-staticmaps"
 	httpHelper "github.com/Luzifer/go_helpers/v2/http"
 	"github.com/Luzifer/rconfig/v2"
 	"github.com/didip/tollbooth"
@@ -109,6 +110,11 @@ func handleMapRequest(res http.ResponseWriter, r *http.Request) {
 
 	if opts.Markers, err = parseMarkerLocations(r.URL.Query()["markers"]); err != nil {
 		http.Error(res, fmt.Sprintf("Unable to parse 'markers' parameter: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	if opts.Paths, err = parsePaths(r.URL.Query()["paths"]); err != nil {
+		http.Error(res, fmt.Sprintf("Unable to parse 'paths' parameter: %s", err), http.StatusBadRequest)
 		return
 	}
 
@@ -269,6 +275,30 @@ func parseMarkerLocations(markers []string) ([]marker, error) {
 					size:  size,
 				})
 			}
+		}
+	}
+
+	return result, nil
+}
+
+func parsePaths(paths []string) ([]path, error) {
+	if paths == nil {
+		// No paths parameters passed, lets ignore this
+		return nil, nil
+	}
+
+	result := []path{}
+	for _, p := range paths {
+		parsed, err := staticMap.ParsePathString(p)
+		if err != nil {
+			return nil, errors.Errorf("parsing path %s: %w", p, err)
+		}
+		for _, parsedPath := range parsed {
+			result = append(result, path{
+				positions: parsedPath.Positions,
+				color:     parsedPath.Color,
+				weight:    parsedPath.Weight,
+			})
 		}
 	}
 

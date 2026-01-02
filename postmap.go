@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"image/color"
 	"strings"
 
 	staticMap "github.com/Luzifer/go-staticmaps"
@@ -18,6 +19,7 @@ type postMapEnvelope struct {
 	Height             int            `json:"height"`
 	DisableAttribution bool           `json:"disable_attribution"`
 	Overlays           postMapOverlay `json:"overlays"`
+	Paths              postMapPaths   `json:"paths"`
 }
 
 func (p postMapEnvelope) toGenerateMapConfig() (generateMapConfig, error) {
@@ -39,6 +41,10 @@ func (p postMapEnvelope) toGenerateMapConfig() (generateMapConfig, error) {
 	}
 
 	if result.Overlays, err = p.Overlays.toOverlays(); err != nil {
+		return generateMapConfig{}, err
+	}
+
+	if result.Paths, err = p.Paths.toPaths(); err != nil {
 		return generateMapConfig{}, err
 	}
 
@@ -75,6 +81,61 @@ func (p postMapMarkers) toMarkers() ([]marker, error) {
 	}
 
 	return parseMarkerLocations(raw)
+}
+
+type postMapPath struct {
+	Weight    float64        `json:"size"`
+	Color     string         `json:"color"`
+	Positions []postMapPoint `json:"positions"`
+}
+
+// func (p postMapPath) String() string {
+// 	parts := []string{}
+
+// 	// if p.Size != "" {
+// 	// 	parts = append(parts, fmt.Sprintf("size:%s", p.Size))
+// 	// }
+
+// 	if p.Color != "" {
+// 		parts = append(parts, fmt.Sprintf("color:%s", p.Color))
+// 	}
+
+// 	parts = append(parts, p.Coord.String())
+// 	return strings.Join(parts, "|")
+// }
+
+type postMapPaths []postMapPath
+
+func (ps postMapPaths) toPaths() ([]path, error) {
+	result := []path{}
+	for _, p := range ps {
+		positions := []s2.LatLng{}
+		for _, point := range p.Positions {
+			positions = append(positions, point.getPoint())
+		}
+
+		pt := path{
+			positions: positions,
+			color:     color.RGBA{0xff, 0, 0, 0xff},
+			weight:    5.0,
+		}
+
+		if p.Color != "" {
+			var err error
+			pt.color, err = staticMap.ParseColorString(p.Color)
+			if err != nil {
+				return nil, errors.Errorf("bad color name %q: %w", p.Color, err)
+			}
+		}
+
+		if p.Weight != 0 {
+			pt.weight = p.Weight
+		}
+
+		result = append(result, pt)
+	}
+
+	return result, nil
 }
 
 type postMapPoint struct {

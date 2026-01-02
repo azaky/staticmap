@@ -48,6 +48,23 @@ func (m marker) String() string {
 	return fmt.Sprintf("%s|%.0f|%d,%d,%d,%d", m.pos.String(), m.size, r, g, b, a)
 }
 
+type path struct {
+	positions []s2.LatLng
+	color     color.Color
+	weight    float64
+}
+
+func (p path) String() string {
+	components := []string{}
+	for _, point := range p.positions {
+		components = append(components, point.String())
+	}
+	components = append(components, fmt.Sprintf("%.2f", p.weight))
+	r, g, b, a := p.color.RGBA()
+	components = append(components, fmt.Sprintf("%d,%d,%d,%d", r, g, b, a))
+	return strings.Join(components, "|")
+}
+
 type generateMapConfig struct {
 	Center             s2.LatLng
 	Zoom               int
@@ -56,6 +73,7 @@ type generateMapConfig struct {
 	Height             int
 	DisableAttribution bool
 	Overlays           []*staticMap.TileProvider
+	Paths              []path
 }
 
 func (g generateMapConfig) getCacheKey() string {
@@ -69,7 +87,12 @@ func (g generateMapConfig) getCacheKey() string {
 		overlayString = append(overlayString, o.URLPattern)
 	}
 
-	hashString := fmt.Sprintf("%s:::%s|%d|%s|%dx%d|%v|%s",
+	pathString := []string{}
+	for _, p := range g.Paths {
+		pathString = append(pathString, p.String())
+	}
+
+	hashString := fmt.Sprintf("%s:::%s|%d|%s|%dx%d|%v|%s|%s",
 		version,
 		g.Center.String(),
 		g.Zoom,
@@ -78,6 +101,7 @@ func (g generateMapConfig) getCacheKey() string {
 		g.Height,
 		g.DisableAttribution,
 		fmt.Sprintf("%x", sha256.Sum256([]byte(strings.Join(overlayString, "::")))),
+		fmt.Sprintf("%x", sha256.Sum256([]byte(strings.Join(pathString, "::")))),
 	)
 
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(hashString)))
@@ -98,6 +122,12 @@ func generateMap(opts generateMapConfig) (io.Reader, error) {
 	if opts.Markers != nil {
 		for _, m := range opts.Markers {
 			ctx.AddObject(staticMap.NewMarker(m.pos, m.color, float64(m.size)))
+		}
+	}
+
+	if opts.Paths != nil {
+		for _, p := range opts.Paths {
+			ctx.AddObject(staticMap.NewPath(p.positions, p.color, p.weight))
 		}
 	}
 
