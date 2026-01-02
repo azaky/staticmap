@@ -55,6 +55,7 @@ type postMapMarker struct {
 	Size  string       `json:"size"`
 	Color string       `json:"color"`
 	Coord postMapPoint `json:"coord"`
+	Label string       `json:"label"`
 }
 
 func (p postMapMarker) String() string {
@@ -69,18 +70,33 @@ func (p postMapMarker) String() string {
 	}
 
 	parts = append(parts, p.Coord.String())
+	parts = append(parts, p.Label)
 	return strings.Join(parts, "|")
 }
 
 type postMapMarkers []postMapMarker
 
 func (p postMapMarkers) toMarkers() ([]marker, error) {
-	raw := []string{}
+	result := []marker{}
 	for _, pm := range p {
-		raw = append(raw, pm.String())
+		size := markerSizes["small"]
+		c := markerColors["red"]
+		if pm.Color != "" {
+			var err error
+			c, err = staticMap.ParseColorString(pm.Color)
+			if err != nil {
+				return nil, errors.Wrapf(err, "parsing color %q", pm.Color)
+			}
+		}
+		result = append(result, marker{
+			pos:   pm.Coord.getPoint(),
+			color: c,
+			size:  size,
+			label: pm.Label,
+		})
 	}
 
-	return parseMarkerLocations(raw)
+	return result, nil
 }
 
 type postMapPath struct {
@@ -88,21 +104,6 @@ type postMapPath struct {
 	Color     string         `json:"color"`
 	Positions []postMapPoint `json:"positions"`
 }
-
-// func (p postMapPath) String() string {
-// 	parts := []string{}
-
-// 	// if p.Size != "" {
-// 	// 	parts = append(parts, fmt.Sprintf("size:%s", p.Size))
-// 	// }
-
-// 	if p.Color != "" {
-// 		parts = append(parts, fmt.Sprintf("color:%s", p.Color))
-// 	}
-
-// 	parts = append(parts, p.Coord.String())
-// 	return strings.Join(parts, "|")
-// }
 
 type postMapPaths []postMapPath
 

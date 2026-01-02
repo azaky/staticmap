@@ -237,8 +237,9 @@ func parseMarkerLocations(markers []string) ([]marker, error) {
 		parts := strings.Split(markerInformation, "|")
 
 		var (
-			size = markerSizes["small"]
-			col  = markerColors["red"]
+			size  = markerSizes["small"]
+			col   = markerColors["red"]
+			label = ""
 		)
 
 		for _, p := range parts {
@@ -264,6 +265,9 @@ func parseMarkerLocations(markers []string) ([]marker, error) {
 				}
 				col = c
 
+			case strings.HasPrefix(p, "label:"):
+				label = strings.TrimPrefix(p, "label:")
+
 			default:
 				pos, err := parseCoordinate(p)
 				if err != nil {
@@ -273,6 +277,7 @@ func parseMarkerLocations(markers []string) ([]marker, error) {
 					pos:   pos,
 					color: col,
 					size:  size,
+					label: label,
 				})
 			}
 		}

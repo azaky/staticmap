@@ -41,11 +41,12 @@ type marker struct {
 	pos   s2.LatLng
 	color color.Color
 	size  markerSize
+	label string
 }
 
 func (m marker) String() string {
 	r, g, b, a := m.color.RGBA()
-	return fmt.Sprintf("%s|%.0f|%d,%d,%d,%d", m.pos.String(), m.size, r, g, b, a)
+	return fmt.Sprintf("%s|%.0f|%d,%d,%d,%d|%s", m.pos.String(), m.size, r, g, b, a, m.label)
 }
 
 type path struct {
@@ -119,15 +120,20 @@ func generateMap(opts generateMapConfig) (io.Reader, error) {
 		ctx.OverrideAttribution("")
 	}
 
-	if opts.Markers != nil {
-		for _, m := range opts.Markers {
-			ctx.AddObject(staticMap.NewMarker(m.pos, m.color, float64(m.size)))
-		}
-	}
-
 	if opts.Paths != nil {
 		for _, p := range opts.Paths {
 			ctx.AddObject(staticMap.NewPath(p.positions, p.color, p.weight))
+		}
+	}
+
+	if opts.Markers != nil {
+		for _, m := range opts.Markers {
+			sm := staticMap.NewMarker(m.pos, m.color, float64(m.size))
+			if m.label != "" {
+				sm.Label = m.label
+				sm.LabelColor = color.Black
+			}
+			ctx.AddObject(sm)
 		}
 	}
 
